@@ -1,46 +1,54 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import os
 
-# โหลดโมเดลและรายการคอลัมน์
+st.set_page_config(page_title="🎓 Student GPA Predictor", page_icon="📚", layout="centered")
+
+st.title("🎓 ระบบทำนายเกรดเฉลี่ย (GPA)")
+st.markdown("""
+ทำนาย GPA จากพฤติกรรมการนอน การใช้หน้าจอ และสุขภาพจิต  
+ใช้โมเดล **Support Vector Regression (SVR)**
+""")
+st.markdown("---")
+
+# โหลดโมเดล
 @st.cache_resource
 def load_model():
-    model = joblib.load('student_gpa_model.joblib')
-    columns = joblib.load('feature_columns.joblib')
-    return model, columns
+    try:
+        model = joblib.load('student_gpa_model.joblib')
+        columns = joblib.load('feature_columns.joblib')
+        return model, columns
+    except Exception as e:
+        st.error(f"⚠️ ไม่สามารถโหลดโมเดลได้: {str(e)}")
+        return None, None
 
 model, expected_columns = load_model()
 
-# --- ตั้งค่าหน้าเว็บ ---
-st.set_page_config(page_title="Student GPA Predictor", page_icon="🎓", layout="centered")
-st.title("🎓 ระบบทำนายเกรดเฉลี่ย (GPA) ของนักเรียน/นักศึกษา")
-st.markdown("ทำนาย GPA จากพฤติกรรมการนอน การใช้หน้าจอ และสุขภาพจิต โดยใช้โมเดล **Support Vector Regression (SVR)**")
-st.markdown("---")
+if model is None:
+    st.stop()
 
-# --- สร้างฟอร์มรับข้อมูลด้านข้าง (Sidebar) ---
-st.sidebar.header("📊 กรุณากรอกข้อมูลของนักเรียน")
+# Sidebar สำหรับกรอกข้อมูล
+st.sidebar.header("📝 กรอกข้อมูลของนักเรียน")
 
-age = st.sidebar.number_input("อายุ (Age)", min_value=10, max_value=40, value=18, step=1)
-gender = st.sidebar.selectbox("เพศ (Gender)", ["Male", "Female", "Non-binary", "Prefer not to say"])
-education_level = st.sidebar.selectbox("ระดับการศึกษา (Education Level)", ["High School", "Undergraduate", "Graduate"])
-avg_sleep_hours = st.sidebar.slider("ชั่วโมงนอนเฉลี่ยต่อวัน (Avg Sleep Hours)", 4.0, 12.0, 7.0, 0.1)
-screen_time_hours = st.sidebar.slider("เวลาใช้หน้าจอต่อวัน (Screen Time Hours)", 0.0, 15.0, 5.0, 0.1)
-social_media_hours = st.sidebar.slider("เวลาใช้โซเชียลมีเดียต่อวัน (Social Media Hours)", 0.0, 15.0, 2.0, 0.1)
-study_hours_per_day = st.sidebar.slider("ชั่วโมงเรียน/อ่านหนังสือต่อวัน (Study Hours)", 0.0, 12.0, 3.0, 0.1)
-exercise_hours_per_week = st.sidebar.slider("ชั่วโมงออกกำลังกายต่อสัปดาห์ (Exercise Hours)", 0.0, 15.0, 3.0, 0.1)
-caffeine_drinks_per_day = st.sidebar.number_input("จำนวนเครื่องดื่มคาเฟอีนต่อวัน (Caffeine Drinks)", min_value=0, max_value=10, value=1, step=1)
-stress_level = st.sidebar.slider("ระดับความเครียด (1-10) (Stress Level)", 1, 10, 5, 1)
-anxiety_score = st.sidebar.slider("คะแนนความวิตกกังวล (1-10) (Anxiety Score)", 1, 10, 5, 1)
-uses_sleep_app = st.sidebar.selectbox("ใช้แอปติดตามการนอนหรือไม่? (Uses Sleep App)", ["Yes", "No"]) == "Yes"
-feels_burned_out = st.sidebar.selectbox("รู้สึกหมดไฟ/Burnout หรือไม่? (Feels Burned Out)", ["Yes", "No"]) == "Yes"
+# รับข้อมูลจากผู้ใช้
+age = st.sidebar.number_input("อายุ (ปี)", min_value=10, max_value=50, value=18, step=1)
+gender = st.sidebar.selectbox("เพศ", ["Male", "Female", "Non-binary", "Prefer not to say"])
+education_level = st.sidebar.selectbox("ระดับการศึกษา", ["High School", "Undergraduate", "Graduate"])
+avg_sleep_hours = st.sidebar.slider("ชั่วโมงนอนเฉลี่ย/วัน", 3.0, 12.0, 7.0, 0.1)
+screen_time_hours = st.sidebar.slider("ชั่วโมงใช้หน้าจอ/วัน", 0.0, 15.0, 5.0, 0.1)
+social_media_hours = st.sidebar.slider("ชั่วโมงโซเชียลมีเดีย/วัน", 0.0, 12.0, 2.0, 0.1)
+study_hours_per_day = st.sidebar.slider("ชั่วโมงเรียน/วัน", 0.0, 12.0, 3.0, 0.1)
+exercise_hours_per_week = st.sidebar.slider("ชั่วโมงออกกำลังกาย/สัปดาห์", 0.0, 15.0, 3.0, 0.1)
+caffeine_drinks_per_day = st.sidebar.number_input("เครื่องดื่มคาเฟอีน/วัน", min_value=0, max_value=10, value=1, step=1)
+stress_level = st.sidebar.slider("ระดับความเครียด (1-10)", 1, 10, 5, 1)
+anxiety_score = st.sidebar.slider("คะแนนความกังวล (1-10)", 1, 10, 5, 1)
+uses_sleep_app = st.sidebar.selectbox("ใช้แอปติดตามการนอน", ["No", "Yes"]) == "Yes"
+feels_burned_out = st.sidebar.selectbox("รู้สึกหมดไฟ (Burnout)", ["No", "Yes"]) == "Yes"
 
-# --- ปุ่มทำนาย ---
-st.sidebar.markdown("---")
-predict_button = st.sidebar.button("🔮 ทำนาย GPA")
-
-# --- ประมวลผลและแสดงผล ---
-if predict_button:
-    # สร้าง DataFrame จากข้อมูลที่ผู้ใช้กรอก (ต้องเรียงชื่อคอลัมน์ให้ตรงกับตอนเทรน)
+# ปุ่มทำนาย
+if st.sidebar.button("🔮 ทำนาย GPA", type="primary"):
+    # สร้าง DataFrame
     input_data = pd.DataFrame([{
         'age': age,
         'gender': gender,
@@ -57,30 +65,42 @@ if predict_button:
         'feels_burned_out': feels_burned_out
     }])
     
-    # เรียงคอลัมน์ให้ตรงกับที่โมเดลคาดหวัง
+    # เรียงคอลัมน์ให้ถูกต้อง
     input_data = input_data[expected_columns]
     
-    # ทำนายผล
+    # ทำนาย
     prediction = model.predict(input_data)[0]
     
-    # แสดงผลลัพธ์
-    st.success(f"### 🎉 GPA ที่ทำนายได้: {prediction:.2f}")
+    # แสดงผล
+    st.success(f"### 🎉 GPA ที่ทำนายได้: **{prediction:.2f}**")
     
-    # แปลง GPA เป็นเกรดอักษรคร่าวๆ (ตามระบบสากล/ไทย)
+    # แปลงเป็นเกรด
     if prediction >= 3.5:
         grade = "A / A-"
+        emoji = "🌟"
     elif prediction >= 3.0:
         grade = "B+ / B"
+        emoji = "👍"
     elif prediction >= 2.5:
         grade = "C+ / C"
+        emoji = "📚"
     elif prediction >= 2.0:
         grade = "D+ / D"
+        emoji = "️"
     else:
         grade = "F"
-        
-    st.info(f"💡 เทียบเท่าเกรดอักษรประมาณ: **{grade}**")
+        emoji = ""
     
-    with st.expander("🔍 ดูข้อมูลที่คุณกรอก"):
-        st.dataframe(input_data.T, column_config={"0": "Value"})
-else:
-    st.warning("👈 กรุณากรอกข้อมูลที่แถบด้านข้างแล้วกดปุ่มทำนาย")
+    st.info(f"{emoji} เกรดที่คาดการณ์: **{grade}**")
+    
+    with st.expander("📋 ดูข้อมูลที่กรอก"):
+        st.dataframe(input_data.T, column_config={"0": "ค่า"})
+
+# ข้อมูลเพิ่มเติม
+st.markdown("---")
+st.markdown("### 📊 เกี่ยวกับโมเดล")
+st.markdown("""
+- **อัลกอริทึม**: Support Vector Regression (SVR)
+- **Features**: 13 ตัวแปร (อายุ, การนอน, การใช้หน้าจอ, ความเครียด, ฯลฯ)
+- **ข้อมูลฝึก**: Student Sleep & Mental Health Dataset (3,000 records)
+""")
