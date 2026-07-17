@@ -1,14 +1,5 @@
-# ไฟล์ Python
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-
-# ไฟล์โมเดลขนาดใหญ่ (Streamlit Cloud รับได้สูงสุด 1GB แต่เราไม่อัปโหลดข้อมูลดิบ)
-*.csv
-
-# ไฟล์ระบบ
-.DS_Store
-Thumbs.db
-*.log
+   __pycache__/
+   *.py[cod]
+   .venv/
+   venv/
+   .DS_Store
